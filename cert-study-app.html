@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>cert.study — Azure · Google DL · SQL · Collibra</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap');
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0f1117; --surface: #1a1d27; --surface2: #22263a; --border: #2e3347;
+    --accent: #6c8eff; --accent2: #ff7eb3; --accent3: #5ef6c8; --amber: #ffc96b;
+    --text: #e8eaf6; --muted: #7b82a8; --mono: 'Space Mono', monospace; --sans: 'DM Sans', sans-serif;
+  }
+  body { font-family: var(--sans); background: var(--bg); color: var(--text); min-height: 100vh; }
+  .app { max-width: 760px; margin: 0 auto; padding: 20px 16px 60px; }
+
+  .welcome { background: linear-gradient(135deg, rgba(108,142,255,.12), rgba(94,246,200,.08)); border: 1px solid rgba(108,142,255,.25); border-radius: 16px; padding: 20px 24px; margin-bottom: 24px; display: flex; align-items: flex-start; gap: 14px; }
+  .welcome-icon { font-size: 24px; flex-shrink: 0; margin-top: 2px; }
+  .welcome h2 { font-size: 15px; font-weight: 600; margin-bottom: 4px; color: var(--text); }
+  .welcome p { font-size: 13px; color: var(--muted); line-height: 1.6; }
+
+  .header { text-align: center; margin-bottom: 24px; }
+  .header h1 { font-family: var(--mono); font-size: 20px; color: var(--accent); }
+  .header p { font-size: 12px; color: var(--muted); margin-top: 3px; }
+
+  .tabs { display: flex; gap: 5px; background: var(--surface); border-radius: 12px; padding: 5px; margin-bottom: 24px; overflow-x: auto; }
+  .tab { flex: 1; min-width: 70px; padding: 8px 4px; border: none; border-radius: 8px; background: transparent; color: var(--muted); font-family: var(--sans); font-size: 12px; font-weight: 500; cursor: pointer; transition: all .2s; white-space: nowrap; }
+  .tab.active { background: var(--surface2); color: var(--text); }
+
+  .section { display: none; } .section.active { display: block; }
+
+  .cert-pills { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 18px; }
+  .pill { padding: 5px 12px; border-radius: 20px; border: 1.5px solid var(--border); background: transparent; color: var(--muted); font-family: var(--sans); font-size: 11px; font-weight: 500; cursor: pointer; transition: all .2s; }
+  .pill.active { border-color: var(--accent); color: var(--accent); background: rgba(108,142,255,.1); }
+
+  .stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 18px; }
+  .stat-box { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px; text-align: center; }
+  .stat-num { font-family: var(--mono); font-size: 20px; font-weight: 700; color: var(--accent); }
+  .stat-lbl { font-size: 10px; color: var(--muted); margin-top: 2px; }
+
+  .streak-row { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px 16px; }
+  .streak-label { font-size: 12px; color: var(--muted); flex-shrink: 0; }
+  .streak-dots { display: flex; gap: 6px; flex-wrap: wrap; }
+  .s-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--border); transition: background .4s; }
+  .s-dot.lit { background: var(--amber); }
+  .streak-count { font-family: var(--mono); font-size: 12px; color: var(--amber); margin-left: auto; flex-shrink: 0; }
+
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 24px; margin-bottom: 14px; }
+  .card-label { font-family: var(--mono); font-size: 10px; color: var(--accent); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 10px; }
+  .question-text { font-size: 16px; line-height: 1.65; margin-bottom: 20px; }
+
+  .options { display: flex; flex-direction: column; gap: 9px; }
+  .option { padding: 12px 15px; border-radius: 10px; border: 1.5px solid var(--border); background: var(--surface2); color: var(--text); font-family: var(--sans); font-size: 13px; cursor: pointer; text-align: left; transition: all .2s; line-height: 1.4; }
+  .option:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+  .option.correct { border-color: var(--accent3); color: var(--accent3); background: rgba(94,246,200,.08); }
+  .option.wrong { border-color: #ffb86c; color: #ffb86c; background: rgba(255,184,108,.07); }
+  .option:disabled { cursor: default; }
+
+  .feedback { margin-top: 14px; padding: 13px 15px; border-radius: 10px; font-size: 13px; line-height: 1.65; display: none; }
+  .feedback.correct-fb { background: rgba(94,246,200,.07); border-left: 3px solid var(--accent3); color: #b8fce8; }
+  .feedback.wrong-fb { background: rgba(255,201,107,.07); border-left: 3px solid var(--amber); color: #ffe4a8; }
+  .feedback.show { display: block; }
+
+  .quiz-nav { display: flex; align-items: center; justify-content: space-between; margin-top: 16px; }
+  .btn { padding: 9px 20px; border-radius: 8px; border: none; font-family: var(--sans); font-size: 13px; font-weight: 500; cursor: pointer; transition: all .2s; }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { opacity: .85; }
+  .btn-ghost { background: var(--surface2); color: var(--muted); border: 1px solid var(--border); }
+  .btn-ghost:hover { color: var(--text); }
+  .progress-text { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+  .progress-bar { height: 3px; background: var(--border); border-radius: 2px; margin-bottom: 16px; }
+  .progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent3)); border-radius: 2px; transition: width .4s ease; }
+
+  .celebration { display: none; text-align: center; padding: 32px 20px; }
+  .celebration.show { display: block; }
+  .celebration-emoji { font-size: 52px; margin-bottom: 12px; animation: pop .4s cubic-bezier(.175,.885,.32,1.275); }
+  .celebration h2 { font-family: var(--mono); font-size: 18px; color: var(--accent3); margin-bottom: 8px; }
+  .celebration p { font-size: 14px; color: var(--muted); margin-bottom: 20px; line-height: 1.6; }
+  @keyframes pop { from { transform: scale(0.5); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+  .result-banner { background: var(--surface); border: 1px solid var(--accent3); border-radius: 14px; padding: 24px; text-align: center; margin-bottom: 18px; }
+  .result-banner h2 { font-family: var(--mono); font-size: 18px; color: var(--accent3); margin-bottom: 6px; }
+  .result-banner p { font-size: 13px; color: var(--muted); line-height: 1.6; }
+
+  .concept-grid { display: grid; gap: 10px; }
+  .concept-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
+  .concept-header { padding: 15px 18px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; gap: 10px; }
+  .concept-title { font-size: 14px; font-weight: 500; flex: 1; }
+  .concept-tag { font-family: var(--mono); font-size: 9px; padding: 3px 8px; border-radius: 10px; background: rgba(108,142,255,.15); color: var(--accent); flex-shrink: 0; }
+  .concept-body { padding: 0 18px; max-height: 0; overflow: hidden; transition: max-height .35s ease, padding .35s ease; }
+  .concept-body.open { max-height: 500px; padding: 0 18px 18px; }
+  .concept-body p { font-size: 13px; line-height: 1.75; color: #c5c9e0; }
+  .concept-body .analogy { margin-top: 10px; padding: 10px 13px; background: rgba(94,246,200,.06); border-left: 2px solid var(--accent3); border-radius: 0 6px 6px 0; font-size: 12px; color: #b8fce8; font-style: italic; }
+  .chevron { font-size: 11px; color: var(--muted); transition: transform .3s; flex-shrink: 0; }
+
+  .pomo-wrap { text-align: center; }
+  .timer-circle { width: 190px; height: 190px; border-radius: 50%; border: 3px solid var(--border); margin: 0 auto 24px; position: relative; display: flex; align-items: center; justify-content: center; flex-direction: column; background: var(--surface); }
+  .timer-ring { position: absolute; top: -3px; left: -3px; width: 196px; height: 196px; }
+  .timer-ring circle { fill: none; stroke: var(--accent); stroke-width: 3; stroke-linecap: round; stroke-dasharray: 597; stroke-dashoffset: 0; transform: rotate(-90deg); transform-origin: center; transition: stroke-dashoffset 1s linear; }
+  .timer-time { font-family: var(--mono); font-size: 32px; font-weight: 700; }
+  .timer-label { font-size: 10px; color: var(--muted); margin-top: 2px; letter-spacing: 1px; text-transform: uppercase; }
+  .pomo-modes { display: flex; gap: 6px; justify-content: center; margin-bottom: 18px; flex-wrap: wrap; }
+  .mode-btn { padding: 6px 14px; border-radius: 20px; border: 1.5px solid var(--border); background: transparent; color: var(--muted); font-family: var(--sans); font-size: 11px; cursor: pointer; transition: all .2s; }
+  .mode-btn.active { border-color: var(--accent2); color: var(--accent2); background: rgba(255,126,179,.1); }
+  .pomo-controls { display: flex; gap: 10px; justify-content: center; margin-bottom: 20px; }
+  .session-dots { display: flex; gap: 8px; justify-content: center; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--border); transition: background .3s; }
+  .dot.done { background: var(--accent); }
+  .pomo-tip { margin-top: 20px; padding: 14px 16px; background: rgba(108,142,255,.07); border-radius: 10px; font-size: 12px; color: var(--muted); line-height: 1.6; }
+
+  .input-area textarea { width: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 13px 15px; color: var(--text); font-family: var(--sans); font-size: 13px; line-height: 1.6; resize: vertical; min-height: 80px; outline: none; transition: border-color .2s; }
+  .input-area textarea:focus { border-color: var(--accent); }
+  .input-area textarea::placeholder { color: var(--muted); }
+  .input-label { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+  .custom-q-list { margin-top: 10px; display: flex; flex-direction: column; gap: 7px; }
+  .custom-q-item { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 11px 14px; font-size: 12px; display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+  .del-btn { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 15px; flex-shrink: 0; }
+  .del-btn:hover { color: var(--accent2); }
+  .empty-state { text-align: center; padding: 32px 16px; color: var(--muted); font-size: 13px; line-height: 1.6; }
+  .divider { height: 1px; background: var(--border); margin: 18px 0; }
+  .section-title { font-family: var(--mono); font-size: 10px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 12px; }
+  .mb12 { margin-bottom: 12px; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="header">
+    <h1>// cert.study</h1>
+    <p>Azure · Google DL · SQL · Collibra</p>
+  </div>
+
+  <div class="welcome">
+    <div class="welcome-icon">🌱</div>
+    <div>
+      <h2>You're doing better than you think.</h2>
+      <p>Getting something wrong just means your brain is learning. Every question you try — right or wrong — is progress. Start small, go at your own pace.</p>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('quiz')">Quiz</button>
+    <button class="tab" onclick="switchTab('concepts')">Concepts</button>
+    <button class="tab" onclick="switchTab('timer')">Timer</button>
+    <button class="tab" onclick="switchTab('custom')">My Notes</button>
+  </div>
+
+  <!-- QUIZ -->
+  <div class="section active" id="tab-quiz">
+    <div class="cert-pills">
+      <button class="pill active" onclick="selectCert('all',this)">All</button>
+      <button class="pill" onclick="selectCert('az900',this)">AZ-900</button>
+      <button class="pill" onclick="selectCert('dp900',this)">DP-900</button>
+      <button class="pill" onclick="selectCert('gdl',this)">Google DL</button>
+      <button class="pill" onclick="selectCert('sql',this)">SQL</button>
+      <button class="pill" onclick="selectCert('collibra',this)">Collibra</button>
+      <button class="pill" onclick="selectCert('custom',this)">My Notes</button>
+    </div>
+    <div class="streak-row">
+      <span class="streak-label">Correct streak</span>
+      <div class="streak-dots" id="streak-dots"></div>
+      <span class="streak-count" id="streak-count">0 🔥</span>
+    </div>
+    <div class="stats-row">
+      <div class="stat-box"><div class="stat-num" id="stat-answered">0</div><div class="stat-lbl">Tried</div></div>
+      <div class="stat-box"><div class="stat-num" id="stat-correct">0</div><div class="stat-lbl">Got it</div></div>
+      <div class="stat-box"><div class="stat-num" id="stat-pct">—</div><div class="stat-lbl">Score</div></div>
+    </div>
+    <div class="celebration" id="celebration">
+      <div class="celebration-emoji" id="cel-emoji">🎉</div>
+      <h2 id="cel-title">Nice one!</h2>
+      <p id="cel-msg">You're making real progress.</p>
+      <button class="btn btn-primary" onclick="hideCelebration()">Keep going →</button>
+    </div>
+    <div id="result-banner" class="result-banner" style="display:none">
+      <h2 id="result-title"></h2>
+      <p id="result-msg"></p>
+      <button class="btn btn-primary" style="margin-top:14px" onclick="restartQuiz()">Go again</button>
+    </div>
+    <div id="quiz-area">
+      <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
+      <div class="card">
+        <div class="card-label" id="q-cert-label">AZ-900</div>
+        <div class="question-text" id="q-text">Loading...</div>
+        <div class="options" id="q-options"></div>
+        <div class="feedback" id="q-feedback"></div>
+      </div>
+      <div class="quiz-nav">
+        <span class="progress-text" id="q-counter">1 / 10</span>
+        <button class="btn btn-primary" id="next-btn" onclick="nextQuestion()" style="display:none">Next →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONCEPTS -->
+  <div class="section" id="tab-concepts">
+    <div class="cert-pills" id="concept-pills">
+      <button class="pill active" onclick="filterConcepts('all',this)">All</button>
+      <button class="pill" onclick="filterConcepts('az900',this)">AZ-900</button>
+      <button class="pill" onclick="filterConcepts('dp900',this)">DP-900</button>
+      <button class="pill" onclick="filterConcepts('gdl',this)">Google DL</button>
+      <button class="pill" onclick="filterConcepts('sql',this)">SQL</button>
+      <button class="pill" onclick="filterConcepts('collibra',this)">Collibra</button>
+    </div>
+    <div class="concept-grid" id="concept-grid"></div>
+  </div>
+
+  <!-- TIMER -->
+  <div class="section" id="tab-timer">
+    <div class="pomo-wrap">
+      <div class="pomo-modes">
+        <button class="mode-btn active" onclick="setMode('focus',this)">Focus 25m</button>
+        <button class="mode-btn" onclick="setMode('short',this)">Break 5m</button>
+        <button class="mode-btn" onclick="setMode('long',this)">Long Break 15m</button>
+      </div>
+      <div class="timer-circle">
+        <svg class="timer-ring"><circle cx="98" cy="98" r="95" id="ring-circle"/></svg>
+        <div class="timer-time" id="timer-display">25:00</div>
+        <div class="timer-label" id="timer-label">Focus</div>
+      </div>
+      <div class="pomo-controls">
+        <button class="btn btn-ghost" onclick="resetTimer()">Reset</button>
+        <button class="btn btn-primary" id="start-btn" onclick="toggleTimer()">Start</button>
+      </div>
+      <div class="section-title">Sessions</div>
+      <div class="session-dots" id="session-dots">
+        <div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div>
+      </div>
+      <div class="pomo-tip">
+        💡 <strong>Starting is the hardest part.</strong> Try just one question before your timer starts. Once you've begun, it gets easier. You only need to do 25 minutes — then you stop.
+      </div>
+    </div>
+  </div>
+
+  <!-- CUSTOM -->
+  <div class="section" id="tab-custom">
+    <div class="welcome" style="margin-bottom:18px">
+      <div class="welcome-icon">📝</div>
+      <div>
+        <h2>Paste your own notes here</h2>
+        <p>Add questions from your course material. They'll appear in the quiz under "My Notes". No pressure — add one at a time if that feels better.</p>
+      </div>
+    </div>
+    <div class="card">
+      <div class="mb12">
+        <div class="input-label">Question (keep it short — one idea at a time)</div>
+        <div class="input-area"><textarea id="custom-q" placeholder="e.g. What is a Data Quality rule in Collibra?"></textarea></div>
+      </div>
+      <div class="mb12">
+        <div class="input-label">Answer / what you want to remember</div>
+        <div class="input-area"><textarea id="custom-a" placeholder="e.g. A rule that checks data meets a defined standard — e.g. no nulls in email column."></textarea></div>
+      </div>
+      <button class="btn btn-primary" onclick="addCustomQ()">Save to My Notes</button>
+    </div>
+    <div class="divider"></div>
+    <div class="section-title">Saved (<span id="custom-count">0</span>)</div>
+    <div class="custom-q-list" id="custom-list">
+      <div class="empty-state">Nothing saved yet. Add one above — even just one is a great start.</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const questions = {
+  az900: [
+    { q: "What does IaaS mean, and what's a real Azure example?", opts: ["Infrastructure as a Service — Azure Virtual Machines", "Internet as a Service — Azure DNS", "Integration as a Service — Azure Logic Apps", "Index as a Service — Azure Search"], ans: 0, exp: "✓ IaaS = you get the raw hardware (VMs, networking). You manage the OS and above. Azure Virtual Machines is the clearest example." },
+    { q: "Which cloud model handles ALL the software for you — you just log in and use it?", opts: ["IaaS", "PaaS", "SaaS", "FaaS"], ans: 2, exp: "✓ SaaS (Software as a Service). Microsoft 365, Gmail, Salesforce — you use the app, someone else runs everything underneath." },
+    { q: "What is an Azure Region?", opts: ["A single server room", "A group of datacentres in the same geographic area, connected by fast links", "A billing account", "A virtual network"], ans: 1, exp: "✓ A region is a geographic cluster of datacentres — like 'Canada East' or 'UK South'. Choosing the right region affects speed and compliance." },
+    { q: "What does 'high availability' mean in cloud terms?", opts: ["The service is expensive", "The service keeps running even when something fails", "Data is encrypted", "Resources auto-scale"], ans: 1, exp: "✓ High availability means the system stays up even if a component fails — usually expressed as a % SLA like 99.9%." },
+    { q: "Azure Pricing Calculator is used to:", opts: ["Monitor live spending", "Estimate costs before you deploy anything", "Set budget alerts", "Compare SLA terms"], ans: 1, exp: "✓ You configure your intended resources in the Pricing Calculator and it gives you an estimated monthly cost — before you've spent a cent." },
+  ],
+  dp900: [
+    { q: "What kind of data goes in Azure Blob Storage?", opts: ["Rows and columns (relational)", "Unstructured files like images, videos, and documents", "Graph relationships", "Real-time event streams"], ans: 1, exp: "✓ Blob Storage is for unstructured data — files, images, backups, logs. It's object storage, not a database." },
+    { q: "OLTP vs OLAP — which handles day-to-day transactions like sales orders?", opts: ["OLAP", "OLTP", "Both equally", "Neither"], ans: 1, exp: "✓ OLTP (Online Transaction Processing) handles live, fast reads/writes — like recording a sale. OLAP is for analysing large historical datasets." },
+    { q: "What does ETL stand for?", opts: ["Export, Transfer, Load", "Extract, Transform, Load", "Evaluate, Test, Launch", "Encrypt, Transmit, Log"], ans: 1, exp: "✓ Extract (pull data from sources) → Transform (clean and reshape it) → Load (write to a destination like a data warehouse)." },
+    { q: "Azure Cosmos DB is best described as:", opts: ["A relational SQL database", "A globally distributed NoSQL database", "A file storage service", "A BI reporting tool"], ans: 1, exp: "✓ Cosmos DB is a globally distributed NoSQL database. It supports document, key-value, graph and column-family models." },
+    { q: "What is Azure Synapse Analytics primarily used for?", opts: ["Hosting web apps", "Large-scale data warehousing and analytics", "Sending notifications", "Managing VM configurations"], ans: 1, exp: "✓ Synapse combines big data (Spark) with enterprise data warehousing (SQL Pools) — it's the go-to for large-scale BI and analytics." },
+  ],
+  gdl: [
+    { q: "What is the main benefit of a managed cloud service?", opts: ["You get physical server access", "The provider handles patching, scaling, and maintenance for you", "It's always cheaper", "You get dedicated hardware"], ans: 1, exp: "✓ Managed = the cloud provider runs the infrastructure. You focus on your app or data, not on keeping servers alive." },
+    { q: "BigQuery is best described as:", opts: ["A relational app database", "A serverless data warehouse for large-scale SQL analytics", "A NoSQL store", "A message queue"], ans: 1, exp: "✓ BigQuery is Google's serverless data warehouse. You write SQL, it queries terabytes in seconds — no servers to manage." },
+    { q: "What does 'elasticity' mean in the cloud?", opts: ["Data encryption in transit", "Auto-scaling resources up or down based on demand", "Geographic data replication", "Container orchestration"], ans: 1, exp: "✓ Elasticity = resources grow when you need more, shrink when you don't. You only pay for what you're using at any moment." },
+    { q: "Google Cloud Regions and Zones — what's the difference?", opts: ["They mean the same thing", "Region = geographic area; Zone = isolated datacentre within that region", "Zone = geographic area; Region = a single server", "Zones are for storage only"], ans: 1, exp: "✓ Region = a location like 'northamerica-northeast1'. Zones are isolated datacentres inside that region. Multiple zones = resilience." },
+    { q: "What is digital transformation?", opts: ["Buying new laptops", "Scanning paper documents into PDFs", "Using digital technology to fundamentally change how an organisation operates", "Moving email to the cloud"], ans: 2, exp: "✓ Digital transformation isn't just digitising old processes — it's rethinking how work gets done using technology. Strategy first, tools second." },
+  ],
+  sql: [
+    { q: "What does SELECT DISTINCT do?", opts: ["Returns all rows including duplicates", "Returns only unique values", "Deletes duplicates from the table", "Counts unique rows"], ans: 1, exp: "✓ DISTINCT removes duplicate rows from results. SELECT DISTINCT city FROM customers gives you each city name once." },
+    { q: "WHERE vs HAVING — when do you use HAVING?", opts: ["Always, instead of WHERE", "When filtering results AFTER a GROUP BY aggregation", "When joining tables", "When sorting results"], ans: 1, exp: "✓ WHERE filters rows before grouping. HAVING filters the grouped results — e.g. HAVING COUNT(*) > 5 after a GROUP BY." },
+    { q: "Which JOIN returns ALL rows from both tables, with NULLs where there's no match?", opts: ["INNER JOIN", "LEFT JOIN", "RIGHT JOIN", "FULL OUTER JOIN"], ans: 3, exp: "✓ FULL OUTER JOIN gives you everything from both sides. No match on either side? That column gets NULL." },
+    { q: "What does GROUP BY do?", opts: ["Sorts results A–Z", "Collapses rows with the same value so you can run aggregates per group", "Joins two tables together", "Filters out NULLs"], ans: 1, exp: "✓ GROUP BY bundles rows with matching values so you can apply COUNT, SUM, AVG etc. per group — e.g. sales per region." },
+    { q: "What is a PRIMARY KEY?", opts: ["An encryption key", "A column that uniquely identifies each row and cannot be NULL", "A link to another table", "An index on any column"], ans: 1, exp: "✓ A PRIMARY KEY uniquely identifies every record. It must be unique and can never be NULL — it's the row's ID badge." },
+  ],
+  collibra: [
+    { q: "What is the Collibra Platform primarily used for?", opts: ["Running SQL queries on databases", "Data governance — managing data assets, policies, and stewardship across an organisation", "Building machine learning models", "Storing files in the cloud"], ans: 1, exp: "✓ Collibra is a data governance platform. It helps organisations find, understand, trust, and manage their data — who owns it, what it means, and how it should be used." },
+    { q: "In Collibra, what is a 'Domain'?", opts: ["A web address", "A container that groups related assets together in the Business Glossary or Catalog", "A type of data quality rule", "A user permission level"], ans: 1, exp: "✓ A Domain in Collibra is an organisational container — like a folder — that groups related assets (terms, data sets, policies) together logically." },
+    { q: "What is a Business Glossary in Collibra?", opts: ["A list of approved vendors", "A centralised dictionary of business terms and their agreed definitions", "A database schema viewer", "A reporting dashboard"], ans: 1, exp: "✓ The Business Glossary is where your organisation defines and agrees on what key terms mean — e.g. what exactly counts as 'revenue' or 'active customer'." },
+    { q: "What is a Data Quality rule in Collibra Data Quality?", opts: ["A firewall setting", "A defined condition that data must meet — e.g. no nulls in email field, values within a valid range", "A type of JOIN in SQL", "A user role"], ans: 1, exp: "✓ A DQ rule defines what 'good' looks like for a specific data element. If data doesn't meet the rule, it's flagged. Examples: completeness, validity, uniqueness." },
+    { q: "What does a Data Steward do in Collibra?", opts: ["Manages server hardware", "Takes ownership of data assets — maintaining definitions, quality, and governance for their domain", "Writes Python scripts", "Approves cloud invoices"], ans: 1, exp: "✓ A Data Steward is accountable for specific data assets in Collibra — keeping definitions accurate, resolving quality issues, and making sure governance policies are followed." },
+    { q: "What is the Collibra Data Catalog used for?", opts: ["Storing raw data files", "Discovering and understanding what data assets exist across the organisation", "Running ETL pipelines", "Writing data quality rules"], ans: 1, exp: "✓ The Data Catalog is your organisation's map of all its data — where it lives, what it means, who owns it, and how it's used." },
+    { q: "In Collibra, what is a 'Community'?", opts: ["A chat forum for users", "A top-level grouping that represents a business unit or department, containing Domains", "A type of data quality check", "A notification setting"], ans: 1, exp: "✓ A Community is the highest-level container in Collibra's hierarchy — typically representing a business unit like Finance or HR. Communities contain Domains, which contain Assets." },
+    { q: "What does 'data lineage' mean in Collibra?", opts: ["The age of a dataset", "The path data travels — from its source through transformations to its final destination", "A user access log", "A data retention policy"], ans: 1, exp: "✓ Data lineage shows where data came from, how it was transformed, and where it ended up. Essential for trust, troubleshooting, and regulatory compliance." },
+  ]
+};
+
+const concepts = [
+  { cert:'az900', title:'Cloud service models (IaaS, PaaS, SaaS)', body:'IaaS = you get virtual machines and networking, manage OS and up. PaaS = you bring your code, the platform handles the rest. SaaS = you just use the finished app. Think: how much do you want to manage?', analogy:'Pizza analogy: IaaS = supplied oven, you make the pizza. PaaS = chef makes it, you choose toppings. SaaS = delivery pizza, you just eat.' },
+  { cert:'az900', title:'CapEx vs OpEx', body:'CapEx = buy hardware upfront, big cost now. OpEx = pay as you go monthly. Cloud = OpEx. This matters for business cases and the AZ-900 exam.', analogy:'Buying a car (CapEx) vs Uber (OpEx). With Uber you only pay when you ride — no maintenance, no depreciation.' },
+  { cert:'az900', title:'Availability Zones', body:'Zones are physically separate datacentres within a region. If one zone has a power failure, others keep running. Deploying across zones = resilience against datacentre failures.', analogy:'Like saving an important document on three USB drives in different rooms. One room floods — the others are fine.' },
+  { cert:'dp900', title:'Structured vs Unstructured data', body:'Structured = rows and columns, fits in a table (Excel, SQL database). Unstructured = no fixed format (images, emails, PDFs, audio). Semi-structured = JSON/XML — has some structure but flexible.', analogy:'Structured = filing cabinet with labelled folders. Unstructured = a cardboard box where you throw everything in.' },
+  { cert:'dp900', title:'OLTP vs OLAP', body:'OLTP handles live transactional data — fast reads/writes of individual records (your app\'s database). OLAP handles analytical queries over large historical datasets — BI and reporting.', analogy:'OLTP = cash register recording each sale. OLAP = end-of-year report showing which products sold best across all stores.' },
+  { cert:'gdl', title:'What is digital transformation?', body:'Not just moving things to the cloud or scanning paper. It\'s rethinking how work gets done using technology — changing processes, culture, and customer experience from the ground up.', analogy:'Not digitising a paper form — redesigning the whole process so the form was never needed in the first place.' },
+  { cert:'gdl', title:'Cloud elasticity vs scalability', body:'Scalability = the ability to handle more load by adding resources. Elasticity = automatically scaling UP and then DOWN when demand drops — you only pay for what you use.', analogy:'Scalability = hiring more staff for the holidays. Elasticity = a temp agency that sends people exactly when needed and recalls them when it\'s quiet.' },
+  { cert:'sql', title:'JOINs explained simply', body:'INNER JOIN: only rows that match in BOTH tables. LEFT JOIN: all rows from left table + matches from right (NULLs where no match). FULL OUTER JOIN: everything from both, NULLs where no match.', analogy:'Two party guest lists. INNER JOIN = people on both lists. LEFT JOIN = everyone on List A, noting who\'s also on List B.' },
+  { cert:'sql', title:'GROUP BY and aggregate functions', body:'GROUP BY collapses rows with matching values. Then you can use COUNT, SUM, AVG, MIN, MAX on each group. HAVING filters those grouped results (WHERE filters before grouping).', analogy:'Sorting a pile of receipts by month (GROUP BY month), then adding up each month\'s total (SUM). HAVING = only show months over $1,000.' },
+  { cert:'collibra', title:'Collibra hierarchy: Community → Domain → Asset', body:'Community = top-level container, usually a business unit (e.g. Finance). Domain = a logical grouping within a community (e.g. Financial Terms). Asset = an individual item like a business term, dataset, or policy.', analogy:'Like a company org chart: Company → Department → Individual employee. Everything has a home.' },
+  { cert:'collibra', title:'Business Glossary vs Data Catalog', body:'Business Glossary = the agreed definitions of business terms (what does "revenue" mean?). Data Catalog = the inventory of actual data assets (where does revenue data live, who owns it, what\'s its quality?). Both work together.', analogy:'Glossary = dictionary. Catalog = library card system. You need the dictionary to understand what the books mean, and the card system to find them.' },
+  { cert:'collibra', title:'Data Quality dimensions', body:'Common DQ dimensions: Completeness (no missing values), Accuracy (values are correct), Consistency (same value across systems), Timeliness (data is up to date), Uniqueness (no duplicates), Validity (values conform to rules).', analogy:'Like quality-checking a form: is it filled in? (completeness), is the info right? (accuracy), does it match other records? (consistency).' },
+  { cert:'collibra', title:'Data lineage — why it matters', body:'Lineage tracks where data came from, how it was transformed, and where it ended up. Critical for debugging data issues ("why is this number wrong?"), regulatory compliance (GDPR, SOX), and building trust in data.', analogy:'Like a paper trail for a cheque — you can trace it from who wrote it, through the bank, to who cashed it.' },
+  { cert:'collibra', title:'Data Steward role', body:'A Data Steward in Collibra is accountable for specific data assets. They maintain definitions in the glossary, monitor data quality, resolve issues, and ensure governance policies are applied.', analogy:'Like a librarian — they don\'t create all the books, but they make sure everything is catalogued correctly, in good condition, and easy to find.' },
+];
+
+let state = { cert:'all', qIndex:0, answered:0, correct:0, pool:[], streak:0, answered_this:false };
+let customQuestions = [];
+const milestones = [
+  { at:3, emoji:'⭐', title:'Off to a great start!', msg:'3 questions done. That\'s 3 more than zero — keep going.' },
+  { at:7, emoji:'🔥', title:'You\'re in the zone!', msg:'7 questions. You\'ve already built real momentum.' },
+  { at:15, emoji:'🚀', title:'Seriously impressive.', msg:'15 questions completed. Your brain is working hard — be proud of that.' },
+  { at:25, emoji:'🏆', title:'Champion study session!', msg:'25 questions. You showed up and you did the work. That matters.' },
+];
+let shownMilestones = new Set();
+
+function buildPool() {
+  let pool = [];
+  const cert = state.cert;
+  if (cert === 'custom') {
+    pool = customQuestions.map(cq => ({ q:cq.q, opts:[cq.a,'I need to review this','Not sure yet','Still learning this one'], ans:0, exp:'✓ '+cq.a, cert:'custom' }));
+  } else {
+    const keys = cert === 'all' ? ['az900','dp900','gdl','sql','collibra'] : [cert];
+    keys.forEach(k => { if (questions[k]) questions[k].forEach(q => pool.push({...q, cert:k})); });
+    if (cert === 'all') customQuestions.forEach(cq => pool.push({ q:cq.q, opts:[cq.a,'I need to review this','Not sure yet','Still learning this one'], ans:0, exp:'✓ '+cq.a, cert:'custom' }));
+  }
+  return pool.sort(() => Math.random() - .5);
+}
+
+function selectCert(cert, el) {
+  document.querySelectorAll('#tab-quiz .pill').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+  state = { cert, qIndex:0, answered:0, correct:0, pool:[], streak:0, answered_this:false };
+  shownMilestones = new Set();
+  updateStats(); updateStreak();
+  state.pool = buildPool();
+  document.getElementById('result-banner').style.display = 'none';
+  document.getElementById('celebration').classList.remove('show');
+  document.getElementById('quiz-area').style.display = 'block';
+  loadQuestion();
+}
+
+function loadQuestion() {
+  if (!state.pool.length) state.pool = buildPool();
+  if (state.qIndex >= state.pool.length) { showResult(); return; }
+  const q = state.pool[state.qIndex];
+  const labels = { az900:'AZ-900', dp900:'DP-900', gdl:'Google DL', sql:'SQL', collibra:'Collibra', custom:'My Notes' };
+  document.getElementById('q-cert-label').textContent = labels[q.cert] || q.cert;
+  document.getElementById('q-text').textContent = q.q;
+  document.getElementById('q-counter').textContent = `${state.qIndex+1} / ${state.pool.length}`;
+  document.getElementById('progress-fill').style.width = `${(state.qIndex/state.pool.length)*100}%`;
+  document.getElementById('q-feedback').className = 'feedback';
+  document.getElementById('next-btn').style.display = 'none';
+  state.answered_this = false;
+  const opts = document.getElementById('q-options');
+  opts.innerHTML = '';
+  q.opts.forEach((opt, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'option'; btn.textContent = opt;
+    btn.onclick = () => answerQ(i, q, btn);
+    opts.appendChild(btn);
+  });
+}
+
+function answerQ(i, q, btn) {
+  if (state.answered_this) return;
+  state.answered_this = true; state.answered++;
+  document.querySelectorAll('#q-options .option').forEach(b => b.disabled = true);
+  const fb = document.getElementById('q-feedback');
+  if (i === q.ans) {
+    btn.classList.add('correct');
+    state.correct++; state.streak++;
+    fb.className = 'feedback correct-fb show';
+    fb.textContent = q.exp;
+  } else {
+    btn.classList.add('wrong');
+    document.querySelectorAll('#q-options .option')[q.ans].classList.add('correct');
+    state.streak = 0;
+    fb.className = 'feedback wrong-fb show';
+    fb.textContent = '↗ Almost — the right answer is highlighted above. ' + q.exp;
+  }
+  document.getElementById('next-btn').style.display = 'inline-block';
+  updateStats(); updateStreak(); checkMilestone();
+}
+
+function updateStats() {
+  document.getElementById('stat-answered').textContent = state.answered;
+  document.getElementById('stat-correct').textContent = state.correct;
+  document.getElementById('stat-pct').textContent = state.answered ? Math.round(state.correct/state.answered*100)+'%' : '—';
+}
+
+function updateStreak() {
+  document.getElementById('streak-count').textContent = state.streak+' 🔥';
+  const dots = document.getElementById('streak-dots');
+  dots.innerHTML = '';
+  for (let i=0; i<Math.min(state.streak,10); i++) {
+    const d = document.createElement('div'); d.className='s-dot lit'; dots.appendChild(d);
+  }
+}
+
+function checkMilestone() {
+  for (const m of milestones) {
+    if (state.answered >= m.at && !shownMilestones.has(m.at)) {
+      shownMilestones.add(m.at);
+      document.getElementById('cel-emoji').textContent = m.emoji;
+      document.getElementById('cel-title').textContent = m.title;
+      document.getElementById('cel-msg').textContent = m.msg;
+      document.getElementById('celebration').classList.add('show');
+      document.getElementById('quiz-area').style.display = 'none';
+      break;
+    }
+  }
+}
+
+function hideCelebration() {
+  document.getElementById('celebration').classList.remove('show');
+  document.getElementById('quiz-area').style.display = 'block';
+  nextQuestion();
+}
+
+function nextQuestion() { state.qIndex++; loadQuestion(); }
+
+function showResult() {
+  document.getElementById('quiz-area').style.display = 'none';
+  const pct = state.answered ? Math.round(state.correct/state.answered*100) : 0;
+  const msgs = pct>=80
+    ? ['🎯 You crushed it.', `${state.correct}/${state.answered} — that's ${pct}%. You are ready. Seriously.`]
+    : pct>=60
+    ? ['📈 Real progress.', `${state.correct}/${state.answered} — ${pct}%. You know more than you did an hour ago. Check the Concepts tab for the ones that tripped you up, then go again.`]
+    : ['💪 You started. That\'s the hardest part.', `${state.correct}/${state.answered} — ${pct}%. Every expert was once a beginner. Check the Concepts tab and try a smaller cert filter next time.`];
+  document.getElementById('result-title').textContent = msgs[0];
+  document.getElementById('result-msg').textContent = msgs[1];
+  document.getElementById('result-banner').style.display = 'block';
+}
+
+function restartQuiz() {
+  state.answered=0; state.correct=0; state.qIndex=0; state.streak=0;
+  shownMilestones=new Set(); state.pool=buildPool();
+  updateStats(); updateStreak();
+  document.getElementById('result-banner').style.display='none';
+  document.getElementById('quiz-area').style.display='block';
+  loadQuestion();
+}
+
+function renderConcepts(filter) {
+  const labels={az900:'AZ-900',dp900:'DP-900',gdl:'Google DL',sql:'SQL',collibra:'Collibra'};
+  document.getElementById('concept-grid').innerHTML = concepts
+    .filter(c=>filter==='all'||c.cert===filter)
+    .map((c,i)=>`<div class="concept-card"><div class="concept-header" onclick="toggleC(${i})">
+      <span class="concept-title">${c.title}</span>
+      <div style="display:flex;gap:8px;align-items:center"><span class="concept-tag">${labels[c.cert]}</span><span class="chevron" id="chev-${i}">▼</span></div>
+    </div><div class="concept-body" id="cbody-${i}"><p>${c.body}</p><div class="analogy">💡 ${c.analogy}</div></div></div>`)
+    .join('');
+}
+
+function toggleC(i) {
+  const b=document.getElementById(`cbody-${i}`), ch=document.getElementById(`chev-${i}`);
+  ch.style.transform=b.classList.toggle('open')?'rotate(180deg)':'';
+}
+
+function filterConcepts(cert, el) {
+  document.querySelectorAll('#concept-pills .pill').forEach(p=>p.classList.remove('active'));
+  el.classList.add('active'); renderConcepts(cert);
+}
+
+let timerInterval=null, timerRunning=false, totalSecs=25*60, secsLeft=25*60, sessions=0;
+const modes={focus:25*60,short:5*60,long:15*60};
+const modeLabels={focus:'Focus',short:'Break',long:'Long Break'};
+
+function setMode(m,el) {
+  document.querySelectorAll('.mode-btn').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active'); clearInterval(timerInterval); timerRunning=false;
+  document.getElementById('start-btn').textContent='Start';
+  totalSecs=modes[m]; secsLeft=totalSecs;
+  document.getElementById('timer-label').textContent=modeLabels[m];
+  document.getElementById('ring-circle').style.stroke=m==='focus'?'var(--accent)':'var(--accent2)';
+  updateTimerDisplay();
+}
+
+function toggleTimer() {
+  if (timerRunning) {
+    clearInterval(timerInterval); timerRunning=false;
+    document.getElementById('start-btn').textContent='Resume';
+  } else {
+    timerRunning=true; document.getElementById('start-btn').textContent='Pause';
+    timerInterval=setInterval(()=>{
+      secsLeft--;
+      if (secsLeft<=0) {
+        clearInterval(timerInterval); timerRunning=false;
+        document.getElementById('start-btn').textContent='Start';
+        secsLeft=0; sessions=Math.min(sessions+1,4);
+        document.querySelectorAll('.dot').forEach((d,i)=>d.classList.toggle('done',i<sessions));
+      }
+      updateTimerDisplay();
+    },1000);
+  }
+}
+
+function resetTimer() {
+  clearInterval(timerInterval); timerRunning=false; secsLeft=totalSecs;
+  document.getElementById('start-btn').textContent='Start'; updateTimerDisplay();
+}
+
+function updateTimerDisplay() {
+  const m=Math.floor(secsLeft/60), s=secsLeft%60;
+  document.getElementById('timer-display').textContent=`${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  document.getElementById('ring-circle').style.strokeDashoffset=597*(1-secsLeft/totalSecs);
+}
+
+function addCustomQ() {
+  const q=document.getElementById('custom-q').value.trim();
+  const a=document.getElementById('custom-a').value.trim();
+  if (!q||!a) return;
+  customQuestions.push({q,a});
+  document.getElementById('custom-q').value='';
+  document.getElementById('custom-a').value='';
+  renderCustomList();
+}
+
+function deleteCustomQ(i) { customQuestions.splice(i,1); renderCustomList(); }
+
+function renderCustomList() {
+  document.getElementById('custom-count').textContent=customQuestions.length;
+  document.getElementById('custom-list').innerHTML=customQuestions.length===0
+    ? '<div class="empty-state">Nothing saved yet. Add one above — even just one is a great start.</div>'
+    : customQuestions.map((cq,i)=>`<div class="custom-q-item"><span><strong style="font-size:12px">${cq.q}</strong><br><span style="color:var(--muted);font-size:11px">${cq.a}</span></span><button class="del-btn" onclick="deleteCustomQ(${i})">×</button></div>`).join('');
+}
+
+function switchTab(t) {
+  document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  const tabs=['quiz','concepts','timer','custom'];
+  document.querySelectorAll('.tab')[tabs.indexOf(t)].classList.add('active');
+  document.getElementById(`tab-${t}`).classList.add('active');
+}
+
+state.pool=buildPool(); loadQuestion(); renderConcepts('all'); updateTimerDisplay();
+</script>
+</body>
+</html>
